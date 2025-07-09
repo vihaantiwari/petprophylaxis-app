@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetProphylaxis</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font and general aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-grey background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 20px; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Softer shadow */
+            padding: 2.5rem; /* Increased padding */
+            max-width: 900px; /* Max width for better readability */
+            width: 95%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Space between sections */
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+        }
+        .file-input-label {
+            background-color: #4f46e5; /* Indigo */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .file-input-label:hover {
+            background-color: #4338ca; /* Darker indigo on hover */
+        }
+        .hidden-input {
+            display: none;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px; /* Limit preview height */
+            object-fit: contain;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0; /* Light border */
+            margin-top: 1rem;
+            display: none; /* Hidden by default */
+        }
+        .analyze-button {
+            background-color: #10b981; /* Emerald green */
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+        .analyze-button:hover {
+            background-color: #059669; /* Darker emerald on hover */
+        }
+        .analyze-button:disabled {
+            background-color: #9ca3af; /* Gray when disabled */
+            cursor: not-allowed;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .results-section {
+            text-align: left;
+            background-color: #f8fafc; /* Lighter background for results */
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 1px solid #e2e8f0;
+        }
+        .results-section h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937; /* Darker text */
+            margin-bottom: 1rem;
+        }
+        .results-section p {
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+            color: #374151; /* Medium dark text */
+        }
+        .results-section strong {
+            color: #1f2937;
+        }
+        .error-message {
+            color: #ef4444; /* Red for errors */
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        .disclaimer {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #fffbeb; /* Light yellow for caution */
+            border-left: 4px solid #f59e0b; /* Orange border */
+            border-radius: 5px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-4xl font-extrabold text-gray-900">PetProphylaxis</h1>
+        <p class="text-lg text-gray-600 mt-2">Upload an image of an animal's symptom to get insights on potential diseases, precautions, and cures.</p>
+
+        <div class="input-group">
+            <label for="imageUpload" class="file-input-label">
+                Upload Image
+            </label>
+            <input type="file" id="imageUpload" accept="image/*" class="hidden-input">
+            <img id="imagePreview" class="image-preview" src="#" alt="Image Preview">
+        </div>
+
+        <button id="analyzeButton" class="analyze-button" disabled>Analyze Symptom</button>
+
+        <div id="loadingSpinner" class="loading-spinner"></div>
+        <p id="errorMessage" class="error-message hidden"></p>
+
+        <div id="results" class="results-section hidden">
+            <h3 class="text-2xl font-bold mb-4">Analysis Results</h3>
+            <p><strong class="text-indigo-700">Disease/Condition:</strong> <span id="diseaseName"></span></p>
+            <p><strong class="text-indigo-700">Precautions:</strong> <span id="precautions"></span></p>
+            <p><strong class="text-indigo-700">Cures/Treatments:</strong> <span id="curesTreatments"></span></p>
+        </div>
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This application provides AI-generated information based on image analysis and should not replace professional veterinary advice. Always consult a qualified veterinarian for accurate diagnosis and treatment plans for your pets.
+        </div>
+    </div>
+
+    <script type="module">
+        // Get references to DOM elements
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultsDiv = document.getElementById('results');
+        const diseaseNameSpan = document.getElementById('diseaseName');
+        const precautionsSpan = document.getElementById('precautions');
+        const curesTreatmentsSpan = document.getElementById('curesTreatments');
+
+        let base64ImageData = ''; // To store the base64 representation of the image
+
+        // Event listener for image file selection
+        imageUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block'; // Show the image preview
+                    base64ImageData = e.target.result.split(',')[1]; // Get base64 part
+                    analyzeButton.disabled = false; // Enable the analyze button
+                    resultsDiv.classList.add('hidden'); // Hide previous results
+                    errorMessage.classList.add('hidden'); // Hide previous errors
+                };
+                reader.onerror = function() {
+                    displayError('Failed to read image file.');
+                    imagePreview.style.display = 'none';
+                    base64ImageData = '';
+                    analyzeButton.disabled = true;
+                };
+                reader.readAsDataURL(file); // Read file as Data URL (base64)
+            } else {
+                imagePreview.src = '#';
+                imagePreview.style.display = 'none';
+                base64ImageData = '';
+                analyzeButton.disabled = true;
+                resultsDiv.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+            }
+        });
+
+        // Event listener for the analyze button
+        analyzeButton.addEventListener('click', async function() {
+            if (!base64ImageData) {
+                displayError('Please upload an image first.');
+                return;
+            }
+
+            loadingSpinner.style.display = 'block'; // Show loading spinner
+            analyzeButton.disabled = true; // Disable button during analysis
+            resultsDiv.classList.add('hidden'); // Hide previous results
+            errorMessage.classList.add('hidden'); // Hide previous errors
+
+            try {
+                // Construct the prompt for the Gemini API with stronger emphasis on detailed and actionable advice
+                const prompt = `Analyze the provided image of an animal's skin condition (e.g., burn, mark, rash, lesion, swelling, hair loss, or other visible symptoms). Based on the visual evidence, identify the most likely disease or condition. Provide detailed, actionable, and accurate general precautions to prevent worsening or spread, and potential cures or treatments. If a specific cure or precaution is not applicable or cannot be determined from the image, explicitly state "No specific cure can be determined from the image." or "No specific precautions can be determined from the image." respectively. If general advice for skin irritation or wound care is appropriate, please provide it. Please format your response clearly as follows:\n\nDisease/Condition: [Name of disease/condition]\nPrecautions: [Detailed list of precautions, separated by commas or bullet points if multi-line]\nCures/Treatments: [Detailed list of cures/treatments, separated by commas or bullet points if multi-line]`;
+
+                // Prepare the payload for the Gemini API call
+                const payload = {
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inlineData: {
+                                        mimeType: "image/png", // Assuming PNG, adjust if needed
+                                        data: base64ImageData
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                };
+
+                // API key provided by the user
+                const apiKey = "AIzaSyDOAoDeBOo8541wvx2izbiqy7m0EnDHW-w";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                // Make the fetch request to the Gemini API
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+                }
+
+                const result = await response.json();
+
+                // Check if the response structure is as expected
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    displayResults(text); // Process and display the results
+                } else {
+                    displayError('No valid response received from the AI. Please try again.');
+                }
+
+            } catch (error) {
+                console.error('Error during API call:', error);
+                displayError('An error occurred while analyzing the image. Please try again. ' + error.message);
+            } finally {
+                loadingSpinner.style.display = 'none'; // Hide loading spinner
+                analyzeButton.disabled = false; // Re-enable the button
+            }
+        });
+
+        /**
+         * Displays an error message to the user.
+         * @param {string} message - The error message to display.
+         */
+        function displayError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        /**
+         * Parses the AI response and displays it in the results section.
+         * @param {string} rawText - The raw text response from the AI.
+         */
+        function displayResults(rawText) {
+            let disease = 'N/A';
+            let precautions = 'No specific precautions can be determined from the image.';
+            let cures = 'No specific cure can be determined from the image.';
+
+            // Simple parsing based on the expected format
+            const lines = rawText.split('\n').filter(line => line.trim() !== '');
+
+            lines.forEach(line => {
+                if (line.startsWith('Disease/Condition:')) {
+                    disease = line.replace('Disease/Condition:', '').trim();
+                } else if (line.startsWith('Precautions:')) {
+                    precautions = line.replace('Precautions:', '').trim();
+                } else if (line.startsWith('Cures/Treatments:')) {
+                    cures = line.replace('Cures/Treatments:', '').trim();
+                }
+            });
+
+            // Ensure "No specific..." messages are displayed if the AI provides empty or generic responses
+            if (precautions === '' || precautions.toLowerCase() === 'n/a' || precautions.toLowerCase() === 'none' || precautions.toLowerCase() === 'no precautions') {
+                precautions = 'No specific precautions can be determined from the image.';
+            }
+            if (cures === '' || cures.toLowerCase() === 'n/a' || cures.toLowerCase() === 'none' || cures.toLowerCase() === 'no cure') {
+                cures = 'No specific cure can be determined from the image.';
+            }
+
+            diseaseNameSpan.textContent = disease;
+            precautionsSpan.textContent = precautions;
+            curesTreatmentsSpan.textContent = cures;
+
+            resultsDiv.classList.remove('hidden'); // Show the results section
+        }
+    </script>
+</body>
+</html>
